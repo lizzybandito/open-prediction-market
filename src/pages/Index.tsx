@@ -3,12 +3,13 @@ import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { MarketCard } from "@/components/MarketCard";
 import { CategoryFilter } from "@/components/CategoryFilter";
+import { CABelt } from "@/components/CABelt";
 import { Input } from "@/components/ui/input";
 import { Search, X, Loader2, Github, ExternalLink } from "lucide-react";
 import { useMarkets } from "@/hooks/use-markets";
 import { useDebounce } from "@/hooks/useDebounce";
 
-const GITHUB_URL = "https://github.com/open-prediction-market/predictd";
+const GITHUB_URL = "https://github.com/lizzybandito/open-prediction-market";
 
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -52,6 +53,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <Hero />
+      <CABelt />
 
       {/* Open Source Banner */}
       {!bannerDismissed && (

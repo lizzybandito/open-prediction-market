@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 
-const GITHUB_URL = "https://github.com/lizzybandito/open-prediction-market";
+const GITHUB_URL = "https://github.com/open-prediction-market/predictd";
 
 
 

@@ -1,45 +1,59 @@
-import { useState } from "react";
-import { Copy, Check } from "lucide-react";
+
+import { useState, useEffect } from "react";
+import { Copy, Check, Info } from "lucide-react";
 import { toast } from "sonner";
 
 export const CABelt = () => {
     const [copied, setCopied] = useState(false);
-    const placeholderCA = "0x8920...248b"; // Placeholder CA address
+    const ca = "0x0000000000000000000000000000000000000000"; // Placeholder CA
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(placeholderCA);
+        navigator.clipboard.writeText(ca);
         setCopied(true);
         toast.success("Contract Address copied to clipboard!");
         setTimeout(() => setCopied(false), 2000);
     };
 
     return (
-        <div className="relative w-full bg-secondary/50 border-y border-border py-2 overflow-hidden select-none">
-            <div className="flex whitespace-nowrap animate-market-card-marquee hover:market-card-marquee-paused items-center">
-                {/* Repeating CA blocks to create the seamless loop */}
-                {[...Array(12)].map((_, i) => (
-                    <div key={i} className="flex items-center mx-8">
-                        <span className="text-xs font-mono font-medium text-muted-foreground mr-2">CA:</span>
-                        <span className="text-xs font-mono font-bold text-foreground bg-background/50 px-2 py-0.5 rounded border border-border/50">
-                            {placeholderCA}
-                        </span>
-                    </div>
-                ))}
-            </div>
+        <div className="w-full bg-secondary/30 border-y border-border py-2 overflow-hidden relative group">
+            <div className="flex items-center">
+                {/* Marquee effect wrapper */}
+                <div className="flex animate-market-card-marquee whitespace-nowrap min-w-full">
+                    {[...Array(10)].map((_, i) => (
+                        <div key={i} className="flex items-center gap-4 px-8">
+                            <span className="text-xs font-mono font-bold text-muted-foreground/60 uppercase tracking-widest">
+                                Contract Address:
+                            </span>
+                            <span className="text-sm font-mono font-bold text-primary tracking-wider">
+                                {ca}
+                            </span>
+                            <span className="text-xs text-muted-foreground/30">•</span>
+                        </div>
+                    ))}
+                </div>
 
-            {/* Floating Copy Button (Fixed position relative to the belt container) */}
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10">
-                <button
-                    onClick={handleCopy}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full shadow-lg hover:scale-105 transition-all active:scale-95"
-                >
-                    {copied ? (
-                        <Check className="h-3 w-3" />
-                    ) : (
-                        <Copy className="h-3 w-3" />
-                    )}
-                    CA
-                </button>
+                {/* Static Copy Button overlay (optional, but let's make it look nice) */}
+                <div className="absolute right-0 top-0 bottom-0 flex items-center px-4 bg-gradient-to-l from-background via-background/80 to-transparent pointer-events-none md:pointer-events-auto">
+                    <button
+                        onClick={handleCopy}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all pointer-events-auto"
+                    >
+                        {copied ? (
+                            <Check className="h-3 w-3" />
+                        ) : (
+                            <Copy className="h-3 w-3" />
+                        )}
+                        {copied ? "COPIED" : "COPY CA"}
+                    </button>
+                </div>
+
+                {/* Info tag at start */}
+                <div className="absolute left-0 top-0 bottom-0 flex items-center px-4 bg-gradient-to-r from-background via-background/80 to-transparent pointer-events-none">
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-muted/50 border border-border/50 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter shadow-sm pointer-events-auto">
+                        <Info className="h-2.5 w-2.5" />
+                        Official
+                    </div>
+                </div>
             </div>
         </div>
     );

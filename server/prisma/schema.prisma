@@ -1,0 +1,801 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+model User {
+  id                      String               @id @default(uuid())
+  email                   String?              @unique
+  username                String
+  password                String?
+  walletAddress           String?              @unique
+  avatar                  String?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  evmWalletAddress        String?              @unique
+  role                    UserRole             @default(USER)
+  solWalletAddress        String?              @unique
+  bio                     String?
+  referralCode            String?              @unique
+  referredBy              String?
+  twitterHandle           String?
+  agents                  Agent[]
+  engagementAwards        EngagementAward[]
+  reviewedSuggestions     MarketSuggestion[]   @relation("MarketSuggestionReviewer")
+  markets                 Market[]             @relation("MarketCreator")
+  orders                  Order[]
+  outcomeOrders           OutcomeOrder[]
+  outcomePositions        OutcomePosition[]
+  positions               Position[]
+  presaleParticipants     PresaleParticipant[]
+  referralBonusesReceived ReferralBonus[]      @relation("RefereeBonus")
+  referralBonusesGiven    ReferralBonus[]      @relation("ReferrerBonus")
+  referralStats           ReferralStats?
+  savedMarkets            SavedMarket[]
+  tokenBalance            TokenBalance?
+  transactions            Transaction[]
+  engagement              UserEngagement?
+  referrer                User?                @relation("Referrer", fields: [referredBy], references: [id])
+  referrals               User[]               @relation("Referrer")
+  xAccount                XAccount?
+  xPosts                  XPost[]
+
+  @@index([email])
+  @@index([walletAddress])
+  @@index([evmWalletAddress])
+  @@index([solWalletAddress])
+  @@index([role])
+  @@map("users")
+}
+
+model Market {
+  id               String                  @id @default(uuid())
+  title            String
+  category         String
+  image            String
+  description      String?
+  yesPrice         Float                   @default(50.0)
+  noPrice          Float                   @default(50.0)
+  volume           Float                   @default(0)
+  endDate          DateTime
+  status           MarketStatus            @default(ACTIVE)
+  resolution       Resolution?
+  contractAddress  String?
+  tokenId          String?
+  traderCount      Int                     @default(0)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  createdBy        String?
+  slug             String?                 @unique
+  agentPicks       AgentPick[]
+  agentRaceTrades  AgentRaceTrade[]
+  chartData        MarketChartData[]
+  outcomeSnapshots MarketOutcomeSnapshot[]
+  suggestion       MarketSuggestion?       @relation("MarketSuggestion")
+  creator          User?                   @relation("MarketCreator", fields: [createdBy], references: [id])
+  orders           Order[]
+  outcomeOrders    OutcomeOrder[]
+  outcomePositions OutcomePosition[]
+  positions        Position[]
+  savedBy          SavedMarket[]
+
+  @@index([status])
+  @@index([category])
+  @@index([endDate])
+  @@index([contractAddress])
+  @@index([slug])
+  @@map("markets")
+}
+
+model MarketChartData {
+  id        String   @id @default(uuid())
+  marketId  String
+  timestamp DateTime @default(now())
+  yesPrice  Float
+  noPrice   Float
+  volume    Float
+  market    Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@unique([marketId, timestamp])
+  @@index([marketId, timestamp])
+  @@map("market_chart_data")
+}
+
+model MarketOutcomeSnapshot {
+  id               String            @id @default(uuid())
+  marketId         String
+  outcomeIndex     Int
+  label            String
+  tokenId          String?
+  probability      Float?
+  priceCents       Float?
+  bestBidCents     Float?
+  bestAskCents     Float?
+  midpointCents    Float?
+  liquidity        Float?
+  volume24h        Float?
+  sourcePrice      OutcomeSource?
+  fetchedAt        DateTime          @default(now())
+  market           Market            @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  outcomeOrders    OutcomeOrder[]
+  outcomePositions OutcomePosition[]
+
+  @@unique([marketId, outcomeIndex])
+  @@index([marketId, tokenId])
+  @@map("market_outcome_snapshots")
+}
+
+model Order {
+  id          String        @id @default(uuid())
+  userId      String
+  marketId    String
+  position    PositionType
+  amount      Float
+  shares      Float
+  price       Float
+  status      OrderStatus   @default(PENDING)
+  orderType   OrderType     @default(MARKET)
+  limitPrice  Float?
+  txHash      String?
+  blockNumber BigInt?
+  gasUsed     BigInt?
+  createdAt   DateTime      @default(now())
+  filledAt    DateTime?
+  cancelledAt DateTime?
+  expiresAt   DateTime?
+  currency    OrderCurrency @default(SOL)
+  market      Market        @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([marketId])
+  @@index([status])
+  @@index([txHash])
+  @@index([marketId, status, price])
+  @@index([marketId, status, createdAt])
+  @@map("orders")
+}
+
+model OutcomeOrder {
+  id                String                 @id @default(uuid())
+  userId            String
+  marketId          String
+  outcomeSnapshotId String?
+  outcomeLabel      String
+  tokenId           String?
+  amount            Float
+  shares            Float
+  price             Float
+  currency          OrderCurrency          @default(SOL)
+  status            OrderStatus            @default(PENDING)
+  orderType         OrderType              @default(MARKET)
+  expiresAt         DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  side              PositionType           @default(YES)
+  market            Market                 @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  snapshot          MarketOutcomeSnapshot? @relation(fields: [outcomeSnapshotId], references: [id])
+  user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([marketId])
+  @@index([marketId, outcomeLabel])
+  @@map("outcome_orders")
+}
+
+model Position {
+  id            String       @id @default(uuid())
+  userId        String
+  marketId      String
+  position      PositionType
+  shares        Float
+  avgPrice      Float
+  totalInvested Float
+  tokenBalance  String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  market        Market       @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, marketId, position])
+  @@index([userId])
+  @@index([marketId])
+  @@map("positions")
+}
+
+model OutcomePosition {
+  id                String                 @id @default(uuid())
+  userId            String
+  marketId          String
+  outcomeSnapshotId String?
+  outcomeLabel      String
+  tokenId           String?
+  shares            Float
+  avgPrice          Float
+  totalInvested     Float
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  side              PositionType           @default(YES)
+  market            Market                 @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  snapshot          MarketOutcomeSnapshot? @relation(fields: [outcomeSnapshotId], references: [id])
+  user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, marketId, outcomeLabel, side])
+  @@index([marketId])
+  @@index([userId])
+  @@map("outcome_positions")
+}
+
+model Transaction {
+  id                  String               @id @default(uuid())
+  userId              String
+  type                TransactionType
+  amount              Float
+  status              TransactionStatus    @default(PENDING)
+  txHash              String?
+  blockNumber         BigInt?
+  fromAddress         String?
+  toAddress           String?
+  description         String?
+  marketId            String?
+  orderId             String?
+  createdAt           DateTime             @default(now())
+  completedAt         DateTime?
+  transaction_details transaction_details?
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([txHash])
+  @@map("transactions")
+}
+
+model ContractEvent {
+  id              String   @id @default(uuid())
+  contractAddress String
+  eventName       String
+  blockNumber     BigInt
+  txHash          String   @unique
+  logIndex        Int
+  data            Json
+  processed       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([contractAddress])
+  @@index([txHash])
+  @@index([processed])
+  @@map("contract_events")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  icon        String?
+  createdAt   DateTime @default(now())
+
+  @@map("categories")
+}
+
+model MarketSuggestion {
+  id                 String           @id @default(uuid())
+  title              String
+  category           String
+  description        String?
+  proposedEndDate    DateTime?
+  resolutionCriteria String?
+  sourceType         SuggestionSource
+  sourceUrl          String?
+  sourceData         Json?
+  confidence         Float            @default(0.5)
+  status             SuggestionStatus @default(PENDING)
+  rejectionReason    String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  reviewedAt         DateTime?
+  reviewedBy         String?
+  marketId           String?          @unique
+  market             Market?          @relation("MarketSuggestion", fields: [marketId], references: [id])
+  reviewer           User?            @relation("MarketSuggestionReviewer", fields: [reviewedBy], references: [id])
+
+  @@index([status])
+  @@index([category])
+  @@index([confidence])
+  @@index([createdAt])
+  @@map("market_suggestions")
+}
+
+model TokenBalance {
+  id           String    @id @default(uuid())
+  userId       String    @unique
+  tokenAmount  Float     @default(0)
+  lockedAmount Float     @default(0)
+  evmAddress   String?
+  solAddress   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("token_balances")
+}
+
+model UserEngagement {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  totalVolume       Float     @default(0)
+  totalTrades       Int       @default(0)
+  winCount          Int       @default(0)
+  lossCount         Int       @default(0)
+  winStreak         Int       @default(0)
+  bestWinStreak     Int       @default(0)
+  daysActive        Int       @default(0)
+  lastActiveDate    DateTime?
+  firstActiveDate   DateTime?
+  currentRank       Int?
+  bestRank          Int?
+  seasonsPlayed     Int       @default(0)
+  accuracy          Float     @default(0)
+  engagementScore   Float     @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  points            Float     @default(0)
+  totalPointsEarned Float     @default(0)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_engagement")
+}
+
+model RewardSeason {
+  id               String       @id @default(uuid())
+  name             String
+  startDate        DateTime
+  endDate          DateTime
+  status           SeasonStatus @default(UPCOMING)
+  totalRewardPool  Float        @default(0)
+  topRewardPercent Float        @default(0.3)
+  top10Percent     Float        @default(0.8)
+  remainingPercent Float        @default(0.2)
+  createdAt        DateTime     @default(now())
+  completedAt      DateTime?
+
+  @@map("reward_seasons")
+}
+
+model AgentPick {
+  id             String           @id @default(uuid())
+  marketId       String
+  agentProvider  AgentProvider
+  agentName      String
+  position       PositionType
+  confidence     Float
+  reasoning      String?
+  priceTarget    Float?
+  marketYesPrice Float
+  marketNoPrice  Float
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  market         Market           @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  raceTrades     AgentRaceTrade[]
+
+  @@unique([marketId, agentProvider])
+  @@index([marketId])
+  @@index([agentProvider])
+  @@index([position])
+  @@index([createdAt])
+  @@map("agent_picks")
+}
+
+model SavedMarket {
+  id        String   @id @default(uuid())
+  userId    String
+  marketId  String
+  createdAt DateTime @default(now())
+  market    Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, marketId])
+  @@index([userId])
+  @@index([marketId])
+  @@map("saved_markets")
+}
+
+model Agent {
+  id                   String           @id @default(uuid())
+  userId               String
+  name                 String
+  provider             AgentProvider    @default(GEMINI)
+  active               Boolean          @default(true)
+  dailyBudget          Float            @default(0)
+  maxPerTrade          Float            @default(0)
+  confidenceThreshold  Float            @default(50)
+  scheduleCron         String?
+  marketsFilter        Json?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  raceEnabled          Boolean          @default(false)
+  startingCapital      Float            @default(1000)
+  availableCapital     Float            @default(1000)
+  maxConcurrentMarkets Int              @default(3)
+  cooldownMinutes      Int              @default(60)
+  lastTradeAt          DateTime?
+  raceStats            AgentRaceStat?
+  raceTrades           AgentRaceTrade[]
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([active])
+  @@map("agents")
+}
+
+model AgentRaceTrade {
+  id          String           @id @default(uuid())
+  agentId     String
+  marketId    String
+  pickId      String?
+  provider    AgentProvider
+  position    PositionType
+  confidence  Float
+  priceTarget Float?
+  amount      Float
+  shares      Float
+  entryPrice  Float
+  exitPrice   Float?
+  pnl         Float?
+  status      AgentTradeStatus @default(OPEN)
+  openedAt    DateTime         @default(now())
+  closedAt    DateTime?
+  notes       String?
+  agent       Agent            @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  market      Market           @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  pick        AgentPick?       @relation(fields: [pickId], references: [id])
+
+  @@index([agentId, status])
+  @@index([marketId])
+  @@index([openedAt])
+  @@map("agent_race_trades")
+}
+
+model AgentRaceStat {
+  id            String   @id @default(uuid())
+  agentId       String   @unique
+  totalTrades   Int      @default(0)
+  openTrades    Int      @default(0)
+  wins          Int      @default(0)
+  losses        Int      @default(0)
+  realizedPnl   Float    @default(0)
+  unrealizedPnl Float    @default(0)
+  avgConfidence Float    @default(0)
+  bestTradePnl  Float    @default(0)
+  worstTradePnl Float    @default(0)
+  lastUpdated   DateTime @default(now()) @updatedAt
+  agent         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@map("agent_race_stats")
+}
+
+model ReferralStats {
+  id                   String   @id @default(uuid())
+  userId               String   @unique
+  referralCode         String   @unique
+  totalReferrals       Int      @default(0)
+  activeReferrals      Int      @default(0)
+  presaleReferrals     Int      @default(0)
+  seasonBonusesEarned  Float    @default(0)
+  presaleBonusesEarned Float    @default(0)
+  totalReferralVolume  Float    @default(0)
+  totalReferralTrades  Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([referralCode])
+  @@map("referral_stats")
+}
+
+model ReferralBonus {
+  id              String            @id @default(uuid())
+  referrerId      String
+  refereeId       String
+  seasonId        String?
+  presaleId       String?
+  type            ReferralBonusType
+  baseAmount      Float
+  bonusPercentage Float
+  bonusAmount     Float
+  status          BonusStatus       @default(PENDING)
+  createdAt       DateTime          @default(now())
+  paidAt          DateTime?
+  referee         User              @relation("RefereeBonus", fields: [refereeId], references: [id])
+  referrer        User              @relation("ReferrerBonus", fields: [referrerId], references: [id])
+
+  @@index([referrerId])
+  @@index([refereeId])
+  @@index([seasonId])
+  @@index([status])
+  @@map("referral_bonuses")
+}
+
+model XAccount {
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  walletAddress    String
+  xUserId          String    @unique
+  handle           String
+  verifiedAt       DateTime  @default(now())
+  accountCreatedAt DateTime?
+  followers        Int?      @default(0)
+  status           String    @default("VERIFIED")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([walletAddress])
+  @@index([handle])
+  @@map("x_accounts")
+}
+
+model XPost {
+  id             String    @id @default(uuid())
+  userId         String
+  xUserId        String
+  tweetId        String    @unique
+  url            String
+  textHash       String
+  createdAt      DateTime  @default(now())
+  tweetCreatedAt DateTime?
+  fetchedAt      DateTime?
+  metricsJson    Json?
+  status         String    @default("PENDING")
+  reason         String?
+  campaignCode   String?
+  seasonId       String?
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([xUserId])
+  @@index([status])
+  @@index([seasonId])
+  @@map("x_posts")
+}
+
+model EngagementAward {
+  id            String    @id @default(uuid())
+  userId        String
+  source        String    @default("x")
+  xPostId       String?
+  points        Float     @default(0)
+  status        String    @default("PROVISIONAL")
+  provisionalAt DateTime  @default(now())
+  finalizedAt   DateTime?
+  detailsJson   Json?
+  seasonId      String?
+  createdAt     DateTime  @default(now())
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([source])
+  @@index([status])
+  @@index([seasonId])
+  @@map("engagement_awards")
+}
+
+model Presale {
+  id                   String               @id @default(uuid())
+  name                 String
+  description          String?
+  tokenAllocation      Float
+  fdvTarget            Float
+  startDate            DateTime
+  endDate              DateTime
+  status               PresaleStatus        @default(UPCOMING)
+  totalContributions   Float                @default(0)
+  participantCount     Int                  @default(0)
+  baseTokensPerUser    Float?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  closedAt             DateTime?
+  presaleWalletAddress String?
+  participants         PresaleParticipant[]
+
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([presaleWalletAddress])
+  @@map("presales")
+}
+
+model PresaleParticipant {
+  id               String    @id @default(uuid())
+  presaleId        String
+  userId           String?
+  solContributed   Float
+  baseTokens       Float?
+  referralBonus    Float     @default(0)
+  bettingBonus     Float     @default(0)
+  totalTokens      Float?
+  referralCodeUsed String?
+  txHash           String?
+  blockNumber      BigInt?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  walletAddress    String
+  linkedAt         DateTime?
+  presale          Presale   @relation(fields: [presaleId], references: [id], onDelete: Cascade)
+  user             User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([presaleId, walletAddress])
+  @@unique([presaleId, userId])
+  @@index([userId])
+  @@index([presaleId])
+  @@index([walletAddress])
+  @@index([txHash])
+  @@map("presale_participants")
+}
+
+model recent_trades {
+  id           String    @id
+  market_id    String?
+  condition_id String?
+  side         String?
+  price        Float?
+  size         Float?
+  ts           DateTime? @db.Timestamp(6)
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model transaction_details {
+  id            String        @id @default(dbgenerated("md5(((random())::text || (clock_timestamp())::text))"))
+  transactionId String        @unique
+  userId        String
+  username      String?
+  marketId      String?
+  marketTitle   String?
+  pickName      String?
+  optionName    String?
+  optionSide    PositionType?
+  position      PositionType?
+  entryPrice    Float?
+  fillPrice     Float?
+  cashoutPrice  Float?
+  closePrice    Float?
+  shares        Float?
+  amount        Float?
+  profit        Float?
+  pnlType       String?
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @default(now())
+  transactions  Transaction   @relation(fields: [transactionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([marketId], map: "transaction_details_marketid_idx")
+  @@index([userId], map: "transaction_details_userid_idx")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  STAFF
+}
+
+enum MarketStatus {
+  ACTIVE
+  CLOSED
+  RESOLVED
+  CANCELLED
+}
+
+enum Resolution {
+  YES
+  NO
+  CANCELLED
+}
+
+enum PositionType {
+  YES
+  NO
+}
+
+enum OutcomeSource {
+  ORDERBOOK
+  GAMMA
+  TOKEN
+  CACHE
+}
+
+enum OrderStatus {
+  PENDING
+  FILLED
+  CANCELLED
+  FAILED
+}
+
+enum OrderType {
+  MARKET
+  LIMIT
+}
+
+enum OrderCurrency {
+  SOL
+  PRED
+  POINTS
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAW
+  BET
+  WIN
+  REFUND
+  REWARD
+  CASHOUT
+  PRESALE
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum SuggestionSource {
+  NEWS_API
+  SOCIAL_MEDIA
+  EVENTS
+  AI_ANALYSIS
+  USER_SUBMIT
+  TRENDS
+}
+
+enum SuggestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CREATED
+  DUPLICATE
+}
+
+enum SeasonStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum AgentProvider {
+  OPENAI
+  GEMINI
+  CLAUDE
+  DEEPSEEK
+  GROK
+}
+
+enum AgentTradeStatus {
+  OPEN
+  CLOSED
+}
+
+enum ReferralBonusType {
+  SEASON
+  PRESALE
+}
+
+enum BonusStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum PresaleStatus {
+  UPCOMING
+  ACTIVE
+  CLOSED
+  DISTRIBUTED
+}

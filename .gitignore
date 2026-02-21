@@ -1,0 +1,40 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+dev.log
+dev.pid
+server/app.log
+server/output.log
+
+# Stray build artifacts
+server/opensourcemarket-api@1.0.0
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Credentials and sensitive files
+**/CREDENTIALS.md
+docs/CREDENTIALS.md
+**/presale-wallet.json
+**/.env
+
+# Files that should not be pushed to public repository
+no-push/
